@@ -6,5 +6,7 @@ Uses cookies from local Chrome/Chromium user-data for authentication. (Using cod
 Example use:
 
 `python3 canvas.py files`
+
 `python3 canvas.py announcements`
+
 `python3 canvas.py messages`
