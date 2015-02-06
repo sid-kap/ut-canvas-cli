@@ -11,6 +11,7 @@ from nameparser import HumanName
 
 import dateutil.parser
 import os
+import sys
 
 import click
 
@@ -33,6 +34,7 @@ def download_file(url, local_filename):
     # local_filename = url.split('/')[-1]
 
     # NOTE the stream=True parameter
+    print(url)
     r = session.get(url, stream=True)
     with open(local_filename, 'wb') as f:
         for chunk in r.iter_content(chunk_size=1024): 
@@ -114,12 +116,12 @@ def messages():
     url = 'https://utexas.instructure.com/api/v1/conversations?scope=inbox&filter_mode=and&include_private_conversation_enrollments=false'
     j = get_json(url)
 
-    threads = [] 
+#    threads = [] 
 
     for obj in j:
 #        print(json.dumps(obj, indent=4))
         thread = Thread(**obj)
-        threads.append(thread)
+#        threads.append(thread)
         print(thread)
 
 class File:
@@ -128,8 +130,11 @@ class File:
         self.filename = kwargs['filename']
         self.url = kwargs['url']
         self.updated_at = kwargs['updated_at']
+        self.locked_for_user = kwargs['locked_for_user']
 
     def download(self, dir):
+        if self.locked_for_user:
+            return
         filename = dir + '/' + self.filename
 
         updated_at = int(dateutil.parser.parse(self.updated_at).strftime('%s'))
@@ -168,6 +173,10 @@ class Folder:
 # @click.argument('course_id')
 def files():
     courses = get_json('https://utexas.instructure.com/api/v1/courses/')
+    
+    if 'errors' in courses and len(courses['errors']):
+        print('You are not signed in.', file=sys.stderr)
+        return
 
     for course in courses:
         # only get courses from Spring 2015
