@@ -10,6 +10,7 @@ from textwrap import fill
 from nameparser import HumanName
 
 import dateutil.parser
+from datetime import datetime
 import os
 import sys
 
@@ -34,7 +35,7 @@ def download_file(url, local_filename):
     # local_filename = url.split('/')[-1]
 
     # NOTE the stream=True parameter
-    print(url)
+    # print(local_filename)
     r = session.get(url, stream=True)
     with open(local_filename, 'wb') as f:
         for chunk in r.iter_content(chunk_size=1024): 
@@ -127,7 +128,7 @@ def messages():
 class File:
     def __init__(self, **kwargs):
         self.id = kwargs['id']
-        self.filename = kwargs['filename']
+        self.filename = kwargs['display_name']
         self.url = kwargs['url']
         self.updated_at = kwargs['updated_at']
         self.locked_for_user = kwargs['locked_for_user']
@@ -137,10 +138,17 @@ class File:
             return
         filename = dir + '/' + self.filename
 
-        updated_at = int(dateutil.parser.parse(self.updated_at).strftime('%s'))
-        download = not(os.path.isfile(filename) and os.path.getmtime(filename) > updated_at)
-        if download:
-            download_file(self.url, filename) 
+        if not os.path.isfile(filename):
+            print('Downloading new file: {0}'.format(dir + '/' + self.filename))
+            download_file(self.url, filename)
+        else:
+            return
+            updated_at = int(dateutil.parser.parse(self.updated_at).strftime('%s')) - 21600
+            last_downloaded = os.path.getmtime(filename)
+            if last_downloaded < updated_at:
+                print('Updating file: {0}. Last downloaded at {1}, updated at {2}'.format(dir + '/' + self.filename, 
+                    datetime.fromtimestamp(last_downloaded), datetime.fromtimestamp(updated_at)))
+                download_file(self.url, filename) 
 
 class Folder:
     def __init__(self, **kwargs):
@@ -173,10 +181,14 @@ class Folder:
 # @click.argument('course_id')
 def files():
     courses = get_json('https://utexas.instructure.com/api/v1/courses/')
-    
+
     if 'errors' in courses and len(courses['errors']):
         print('You are not signed in.', file=sys.stderr)
+        print(courses, file=sys.stderr)
         return
+
+    courses.append(get_json('https://utexas.instructure.com/api/v1/courses/1135095/'))
+    courses.append(get_json('https://utexas.instructure.com/api/v1/courses/1135180/'))
 
     for course in courses:
         # only get courses from Spring 2015
